@@ -2,10 +2,14 @@
 local CustomUI = {}
 
 function CustomUI:CreateWindow(config)
+	local Players = game:GetService("Players")
+	local UserInputService = game:GetService("UserInputService")
+	local LocalPlayer = Players.LocalPlayer
+
 	local ScreenGui = Instance.new("ScreenGui")
 	ScreenGui.Name = config.Name or "CustomUI"
 	ScreenGui.ResetOnSpawn = false
-	ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+	ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
 	local MainFrame = Instance.new("Frame")
 	MainFrame.Size = UDim2.new(0, 500, 0, 300)
@@ -21,13 +25,49 @@ function CustomUI:CreateWindow(config)
 	Title.TextColor3 = Color3.new(1, 1, 1)
 	Title.Font = Enum.Font.SourceSansBold
 	Title.TextSize = 22
+	Title.Name = "Title"
 	Title.Parent = MainFrame
 
 	local TabsHolder = Instance.new("Frame")
 	TabsHolder.Position = UDim2.new(0, 0, 0, 40)
 	TabsHolder.Size = UDim2.new(1, 0, 1, -40)
 	TabsHolder.BackgroundTransparency = 1
+	TabsHolder.Name = "TabsHolder"
 	TabsHolder.Parent = MainFrame
+
+	-- Draggable logic
+	local dragging = false
+	local dragInput, dragStart, startPos
+
+	Title.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = true
+			dragStart = input.Position
+			startPos = MainFrame.Position
+
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	Title.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement then
+			dragInput = input
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			local delta = input.Position - dragStart
+			MainFrame.Position = UDim2.new(
+				startPos.X.Scale, startPos.X.Offset + delta.X,
+				startPos.Y.Scale, startPos.Y.Offset + delta.Y
+			)
+		end
+	end)
 
 	local Window = {}
 	Window.Tabs = {}
@@ -39,6 +79,10 @@ function CustomUI:CreateWindow(config)
 		TabButton.Size = UDim2.new(0, 100, 0, 30)
 		TabButton.Position = UDim2.new(0, #Window.Tabs * 105, 1, -35)
 		TabButton.Text = tabName
+		TabButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+		TabButton.TextColor3 = Color3.new(1, 1, 1)
+		TabButton.Font = Enum.Font.SourceSans
+		TabButton.TextSize = 18
 		TabButton.Parent = MainFrame
 
 		local TabFrame = Instance.new("ScrollingFrame")
@@ -84,7 +128,7 @@ function CustomUI:CreateWindow(config)
 			local state = false
 			Toggle.MouseButton1Click:Connect(function()
 				state = not state
-				Toggle.Text = state and "[ ON ] " .. config.Text or "[ OFF ] " .. config.Text
+				Toggle.Text = (state and "[ ON ] " or "[ OFF ] ") .. config.Text
 				if config.Callback then
 					config.Callback(state)
 				end
